@@ -1,10 +1,13 @@
 ---
-title: "R Notebook"
-output: html_notebook
+title: "Wappineger Creek 2017: Macroinvertebrate Abundace Table"
+output: html_document
+author: Zachary M. Smith
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 ---
 
 # Overview
 
+This script was developed to create a macroinvertebrate abundance table for Michaela Schnore. The NYSDEC master macroinvertebrate taxonomic table is joined with the Wappineger Creek macroinvertebrate abundance data. This provides the some taxonomic hierarchy context.
 
 # Preprocessing
 
@@ -86,6 +89,8 @@ if (length(check.vec) == 0) {
 }
 ```
 
+## Format the Data Frame for Report
+
 Finalize the data frame before exporting.
 ```{r}
 final.df <- join.df %>% 
@@ -99,6 +104,8 @@ final.df <- join.df %>%
          Family = family,
          Taxon = macro_genspecies)
 ```
+
+# Export the Data
 
 Export `final.df` as a CSV.
 ```{r}
