@@ -1,0 +1,111 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Overview
+
+
+# Preprocessing
+
+## Packages
+
+Load the necessary packages.
+```{r, message=FALSE}
+library(tidyverse)
+```
+
+## Data Path
+
+Establish file path to the project directory. This will be used to access data.
+```{r}
+project.path <- rprojroot::find_rstudio_root_file()
+data.path <- file.path(project.path, "data")
+```
+
+## Functions
+
+General data preprocessing function.
+```{r}
+prep <- function(x) {
+  x %>% 
+  rename_all(tolower) %>% 
+  mutate_if(is.character,
+            list(~tolower(.) %>% trimws)) %>% 
+  mutate_if(is.character,
+            list(~str_replace_all(., " ", "_"))) 
+}
+```
+
+## Import Dat
+
+### Master Taxonomic Table
+
+Import the "master" taxonomic table. This table includes all of the macroinvertebrate taxonomic hierarchy and attributes.
+```{r}
+master.df <- file.path(data.path,
+                       "macro_taxa-hier-attributes_2019-04-10.csv") %>% 
+  read.csv(stringsAsFactors = FALSE,
+           na.strings=c(""," ","NA")) %>% 
+  prep()
+```
+
+### Abundance Data
+
+Import the the observed taxonomic abundances.
+```{r}
+abund.df <- file.path(data.path,
+                       "wappinger-2017_species-raw.csv") %>% 
+  read.csv(stringsAsFactors = FALSE,
+           na.strings=c(""," ","NA")) %>% 
+  prep()
+```
+
+
+## Join Tables
+
+```{r}
+join.df <- abund.df %>% 
+  left_join(master.df, by = c("macro_genspecies"))
+```
+
+Check to see if any of the taxa did not merge correctly with the master taxonomic table. 
+```{r}
+check.vec <- join.df %>% 
+  filter(is.na(kingdom)) %>% 
+  distinct(macro_genspecies) %>% 
+  pull()
+
+if (length(check.vec) == 0) {
+  "All taxa merged correctly."
+} else {
+  paste("The following taxa are missing fromt he Master Taxonomic Table:",
+        paste(check.vec,
+              sep = ", ",
+              collapse = ", "))
+}
+```
+
+Finalize the data frame before exporting.
+```{r}
+final.df <- join.df %>% 
+  unite(station, c("basin", "location", "rivmile")) %>% 
+  select(station, order, family, macro_genspecies, indiv) %>% 
+  spread(station, indiv, fill = 0) %>% 
+  mutate_at(c("order", "family", "macro_genspecies"),
+            ~str_to_sentence(.) %>% 
+              str_replace_all("_", " ")) %>% 
+  rename(Order = order,
+         Family = family,
+         Taxon = macro_genspecies)
+```
+
+Export `final.df` as a CSV.
+```{r}
+data.table::fwrite(final.df,
+                   file.path(data.path,
+                            "output",
+                            paste0("wappinger-2017_taxa_", Sys.Date(), ".csv")),
+                  )
+```
+
